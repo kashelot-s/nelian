@@ -64,7 +64,7 @@ static enum NelianError Nelian_ProtocolHeader(struct Nelian *nelian)
 	int i;
 	unsigned char byte;
 
-	for (i = 0; i < 4; i++) {
+	for (i = 0; i < 5; i++) {
 		byte = Nelian_ReadByte(nelian);
 		if (NELIAN_HEAD == byte)
 			break;

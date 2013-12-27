@@ -5,6 +5,7 @@
 	ERR_X(OK,"OK") \
 	ERR_X(ERR_OPTIONS,"parsing options fail") \
 	ERR_X(ERR_NELIAN,"nelian hardware error") \
+	ERR_X(ERR_NELIAN_INIT,"can't init hardware") \
 	ERR_X(ERR_CBUFFER_FAIL,"curcular buffer fail")
 
 enum ttyDump_Error {

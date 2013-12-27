@@ -32,7 +32,8 @@ int main(int argc, const char *argv[])
 		return err;
 	err_nelian = Nelian_Init(&nelian, options.device);
 	if (NELIAN_OK != err_nelian) {
-		err = ERR_NELIAN;
+		printf("[ERROR:NELIAN] %s\n", Nelian_StrErr(err_nelian));
+		err = ERR_NELIAN_INIT;
 		goto out1;
 	}
 	Waveform_Init(&wave, 10000, &argc, argv);
