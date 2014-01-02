@@ -1,13 +1,14 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <plplot/plplot.h>
+#include <unistd.h>
 #include "waveform.h"
 
 static void Waveform_CleanUpWindow(struct Waveform *wave)
 {
 	plclear();
 	plcol0(7);
-	pllab("x", "y", "nelian");
+	pllab("sample num", "data", "nelian");
 }
 
 void Waveform_DoStep(struct Waveform *wave)
@@ -24,10 +25,11 @@ enum WaveformError Waveform_Init(struct Waveform *wave, int width,
 {
 	wave->width = width;
 	wave->current_pos = 0;
+
 	plparseopts(argc, argv, PL_PARSE_FULL);
 	plsdev("xwin");
 	plinit();
-	plenv(0, width, 0, 1 << 16, 0, 0);
+	plenv(0.0, (float)wave->width, 0.0, (float)(1 << 16), 0, 0);
 	Waveform_CleanUpWindow(wave);
 	return WAVEFORM_OK;
 }
@@ -37,8 +39,8 @@ void Waveform_Done(struct Waveform *wave)
 	plend();
 }
 
-void Waveform_AddDataStep(struct Waveform *wave, 
-	int data_old, int data_new, int color)
+void Waveform_AddDataStep(struct Waveform *wave, int data_old, int data_new,
+	int wave_color)
 {
 	PLFLT x[2], y[2];
 
@@ -47,6 +49,6 @@ void Waveform_AddDataStep(struct Waveform *wave,
 	y[0] = (PLFLT)data_old;
 	y[1] = (PLFLT)data_new;
 
-	plcol0(color);
+	plcol0(3);
 	plline(2, x, y);
 }

@@ -1,4 +1,7 @@
+#include <assert.h>
 #include <fcntl.h>
+#include <errno.h>
+#include <stdio.h>
 #include <string.h>
 #include <sys/stat.h> 
 #include <termios.h> 
@@ -32,11 +35,35 @@ static unsigned char reverse_byte(unsigned char in)
 	return out;
 }
 
+static void Nelian_DumpByte(struct Nelian *nelian, unsigned char buffer)
+{
+	fprintf(nelian->dump_fd, "%02X ", buffer);
+	if (0 == nelian->received_bytes % 16)
+		fprintf(nelian->dump_fd, "\n");
+	fflush(nelian->dump_fd);
+}
+
 static unsigned char Nelian_ReadByte(struct Nelian *nelian)
 {
 	unsigned char buffer;
 	read(nelian->fd, &buffer, 1);
+	nelian->received_bytes += 1;
+	if (nelian->dump_enable)
+		Nelian_DumpByte(nelian, buffer);
 	return buffer;
+}
+
+static unsigned int Nelian_ReadWord(struct Nelian *nelian)
+{
+	unsigned char byte1, byte2;
+	unsigned int value;
+
+	//byte1 = reverse_byte(Nelian_ReadByte(nelian));
+	//byte2 = reverse_byte(Nelian_ReadByte(nelian));
+	byte1 = Nelian_ReadByte(nelian);
+	byte2 = Nelian_ReadByte(nelian);
+	value = byte2 << 8 | byte1; 
+	return value;
 }
 
 static enum NelianError Nelian_OpenDevice(struct Nelian *nelian, 
@@ -94,13 +121,26 @@ static enum NelianError Nelian_ProtocolSyncro(struct Nelian *nelian, int channel
 	return NELIAN_CANT_SELECT_CHANNEL;
 }
 
-enum NelianError Nelian_Init(struct Nelian *nelian, const char *device)
+enum NelianError Nelian_Init(struct Nelian *nelian, const char *device,
+	const char *dump_name, bool dump_enable)
 {
 	enum NelianError err;
 
+	memset(nelian, 0, sizeof(struct Nelian));
 	err = Nelian_OpenDevice(nelian, device);
 	if (NELIAN_OK != err)
 		return err;
+
+	nelian->dump_enable = dump_enable;
+	if (dump_enable) {
+		assert(dump_name != NULL);
+		nelian->dump_fd = fopen(dump_name, "w");
+		if (NULL == nelian->dump_fd)
+			printf("[ERROR]: error opening dump file %s, because %s\n",
+				dump_name, strerror(errno));
+	} else {
+		nelian->dump_fd = NULL;
+	}
 
 	return NELIAN_OK;
 }
@@ -108,11 +148,12 @@ enum NelianError Nelian_Init(struct Nelian *nelian, const char *device)
 void Nelian_Done(struct Nelian *nelian)
 {
 	close(nelian->fd);
+	if (nelian->dump_enable)
+		fclose(nelian->dump_fd);
 }
 
 enum NelianError Nelian_GetData(struct Nelian *nelian, struct NelianData *data)
 {
-	unsigned char byte1, byte2;
 	unsigned int value;
 	int i;
 	enum NelianError err;
@@ -121,9 +162,7 @@ enum NelianError Nelian_GetData(struct Nelian *nelian, struct NelianData *data)
 		err = Nelian_ProtocolSyncro(nelian, i);
 		if (NELIAN_OK != err)
 			return err;
-		byte1 = reverse_byte(Nelian_ReadByte(nelian));
-		byte2 = reverse_byte(Nelian_ReadByte(nelian));
-		value = byte2 << 8 | byte1; 
+		value = Nelian_ReadWord(nelian);
 		if (i == 0) 
 			data->value_red = value;
 		if (i == 1) 
